@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -10,20 +9,12 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-
   late String _userTask;
   List taskList = [];
-
-  // void initFirabase() async {
-  //   WidgetsFlutterBinding.ensureInitialized();
-  //   await Firebase.initializeApp();
-  // }
 
   @override
   void initState() {
     super.initState();
-
-    // initFirabase();
 
     taskList.addAll([
       'Finish course',
@@ -33,121 +24,120 @@ class _HomeState extends State<Home> {
   }
 
   void _menuOpen() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (BuildContext context) {
-        return Scaffold(
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (BuildContext context) {
+      return Scaffold(
           appBar: AppBar(
               iconTheme: IconThemeData(
                 color: Colors.white, //change your color here
               ),
-            title: Text("Menu")),
-            body: Row(
-              children: [
-                ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/',
-                          (route) => false
-                      );
-                    },
-                    child: Text("Main Menu", style: TextStyle(
-                      color: Colors.white,
-                    ),),
+              title: Text("Menu")),
+          body: Row(
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/', (route) => false);
+                },
+                child: Text(
+                  "Main Menu",
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
                 ),
-                Padding(padding: EdgeInsets.only(left:5),),
-                Text("Simple menu")
-              ],
-            )
-          );
-      })
-    );
+              ),
+              Padding(
+                padding: EdgeInsets.only(left: 5),
+              ),
+              Text("Simple menu")
+            ],
+          ));
+    }));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Colors.deepPurpleAccent,
-        appBar: AppBar(
-          iconTheme: IconThemeData(
-            color: Colors.white, //change your color here
-          ),
-          title: Text(
-            "Task list",
-            style: TextStyle(
-              color: Colors.white,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-                onPressed: _menuOpen,
-                icon: Icon(Icons.menu))
-          ],
+      backgroundColor: Colors.deepPurpleAccent,
+      appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.white, //change your color here
         ),
-        body: ListView.builder(
-            itemCount: taskList.length,
-            itemBuilder: (BuildContext context, int index) {
-              return Dismissible(
-                key: Key(taskList[index]),
-                child: Card(
-                  child: ListTile(
-                    title: Text(taskList[index]),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete_rounded),
-                      color: Colors.deepPurple,
-                      onPressed: () {
-                        setState(() {
-                          taskList.removeAt(index);
-                        });
-                      },
+        title: Text(
+          "Task list",
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        actions: [IconButton(onPressed: _menuOpen, icon: Icon(Icons.menu))],
+      ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('items').snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (!snapshot.hasData) return Text('No records found.');
+          return ListView.builder(
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (BuildContext context, int index) {
+                return Dismissible(
+                  key: Key(snapshot.data!.docs[index].id),
+                  child: Card(
+                    child: ListTile(
+                      title: Text(snapshot.data!.docs[index].get('item')),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete_rounded),
+                        color: Colors.deepPurple,
+                        onPressed: () {
+                          FirebaseFirestore.instance
+                              .collection('items')
+                              .doc(snapshot.data!.docs[index].id)
+                              .delete();
+                        },
+                      ),
                     ),
                   ),
-                ),
-                onDismissed: (direction) {
-                  // if(direction == DismissDirection.endToStart)
-                  setState(() {
-                    taskList.removeAt(index);
-                  });
-                },
-              );
-            }),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.yellow,
-          onPressed: () {
-            showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text('Add task'),
-                    content: TextField(
-                      onChanged: (String value) {
-                        _userTask = value;
-                      },
-                    ),
-                    actions: [
-                      ElevatedButton(
-                          onPressed: () {
-                            FirebaseFirestore.instance.collection('items').add({
-                              'item': _userTask
-                            });
-                            Navigator.of(context).pop();
-                          },
-                          child: Text("Add", style: TextStyle(
-                            color: Colors.white
-                          ),))
-                    ],
-                  );
-                }
-            );
-          },
-          child: Icon(
-            Icons.add,
-            color: Colors.black
-          ),
-        ),
-
+                  onDismissed: (direction) {
+                    FirebaseFirestore.instance
+                        .collection('items')
+                        .doc(snapshot.data!.docs[index].id)
+                        .delete();
+                  },
+                );
+              });
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.yellow,
+        onPressed: () {
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text('Add task'),
+                  content: TextField(
+                    onChanged: (String value) {
+                      _userTask = value;
+                    },
+                  ),
+                  actions: [
+                    ElevatedButton(
+                        onPressed: () {
+                          FirebaseFirestore.instance
+                              .collection('items')
+                              .add({'item': _userTask});
+                          Navigator.of(context).pop();
+                        },
+                        child: Text(
+                          "Add",
+                          style: TextStyle(color: Colors.white),
+                        ))
+                  ],
+                );
+              });
+        },
+        child: Icon(Icons.add, color: Colors.black),
+      ),
     );
   }
 }
